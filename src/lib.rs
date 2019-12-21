@@ -45,6 +45,9 @@ impl Into<String> for DatabaseType {
 }
 
 /// Unit tests for the client methods
+///
+/// These tests currently expect the REST api server
+/// to be running on `https://localhost:3000`
 #[cfg(test)]
 mod tests {
     use super::*;
