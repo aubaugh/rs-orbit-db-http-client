@@ -6,7 +6,7 @@ run: build
 build:
     cargo build --bin cli
 
-# Checks that `cargo fmt` has been run and runs `cargo test`
+# Formats the source code and runs tests
 pre-push:
-	cargo fmt -- --check
-	cargo test
+	cargo fmt
+	cargo test --lib

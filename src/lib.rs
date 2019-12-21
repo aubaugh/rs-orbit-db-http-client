@@ -1,3 +1,5 @@
+//! Client library used for communicating with (OrbitDB's REST API server)[https://github.com/orbitdb/orbit-db-http-api]
+
 use std::convert::Into;
 use std::str::FromStr;
 
@@ -42,6 +44,7 @@ impl Into<String> for DatabaseType {
     }
 }
 
+/// Unit tests for the client methods
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,9 +73,9 @@ mod tests {
         Ok(())
     }
 
-    /// Tests `client.get_counter_value()`
+    /// Tests success of `client.get_counter_value()`
     #[async_attributes::test]
-    async fn test_get_counter_value() -> Result<(), Exception> {
+    async fn test_ok_get_counter_value() -> Result<(), Exception> {
         let url = Url::parse("https://localhost:3000")?;
         let client = Client::new(url);
 
@@ -80,7 +83,23 @@ mod tests {
             .create_database("counter", DatabaseType::Counter)
             .await?;
 
-        client.get_counter_value("counter").await?;
+        assert_eq!(client.get_counter_value("counter").await?, 0);
         Ok(())
+    }
+
+    /// Tests failure of `client.get_counter_value()`
+    #[async_attributes::test]
+    #[should_panic(expected = "Expected valid counter database")]
+    async fn test_err_get_counter_value() {
+        let url = Url::parse("https://localhost:3000").expect("Unable to connect to REST server");
+        let client = Client::new(url);
+
+        client
+            .create_database("feed", DatabaseType::Feed)
+            .await
+            .expect("Unable to create feed db");
+
+        // This `.unwrap()` should panic at the expected error
+        client.get_counter_value("feed").await.unwrap();
     }
 }

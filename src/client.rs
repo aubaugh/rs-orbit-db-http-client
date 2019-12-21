@@ -1,6 +1,3 @@
-//! Client library used for communicating with OrbitDB's REST API server:
-//! https://github.com/orbitdb/orbit-db-http-api
-
 use super::DatabaseType;
 use serde::Deserialize;
 use serde_json::Value;
@@ -117,8 +114,12 @@ impl Client {
     /// Makes a GET request to `self.base_url/db/:dbname/value`,
     /// returning the counter's value on success
     pub async fn get_counter_value(&self, dbname: &str) -> Result<u64, Exception> {
-        let path = format!("db/{}/value", dbname);
+        let path = format!("db/{}/value", &dbname);
         let response = self.get(&path).await?;
+
+        if response["statusCode"] == 500 {
+            Err("Expected valid counter database")?
+        }
 
         let value = serde_json::from_value(response)?;
         Ok(value)
