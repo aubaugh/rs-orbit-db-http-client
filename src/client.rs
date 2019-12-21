@@ -94,6 +94,10 @@ impl Client {
     /// Makes a POST request to `self.base_url/:dbname`,
     /// sending the specified db type and returning the
     /// database structure on success
+    //
+    // TODO: this method needs to take arbitrary parameters
+    // for creating the database, specifying its type is the
+    // minimum required
     pub async fn create_database(
         &self,
         dbname: &str,

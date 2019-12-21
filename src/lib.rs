@@ -91,13 +91,13 @@ mod tests {
     #[async_attributes::test]
     #[should_panic(expected = "Expected valid counter database")]
     async fn test_err_get_counter_value() {
-        let url = Url::parse("https://localhost:3000").expect("Unable to connect to REST server");
+        let url = Url::parse("https://localhost:3000").unwrap();
         let client = Client::new(url);
 
         client
             .create_database("feed", DatabaseType::Feed)
             .await
-            .expect("Unable to create feed db");
+            .unwrap();
 
         // This `.unwrap()` should panic at the expected error
         client.get_counter_value("feed").await.unwrap();
