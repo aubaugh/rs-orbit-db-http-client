@@ -1,5 +1,6 @@
 //! Client library used for communicating with (OrbitDB's REST API server)[https://github.com/orbitdb/orbit-db-http-api]
 
+use serde::Serialize;
 use serde_json::Value;
 
 pub use client::Client;
@@ -12,6 +13,7 @@ extern crate strum_macros;
 pub enum RequestType {
     Get,
     Post,
+    Delete,
 }
 
 /// Settings for an API request
@@ -30,12 +32,23 @@ macro_rules! api_request {
         let endpoint_url = $client.base_url.join(&$config.path)?;
 
         let response: Value = match $config.rtype {
-            RequestType::Get => surf::get(&endpoint_url).recv_json().await?,
+            RequestType::Get => {
+                surf::get(&endpoint_url)
+                    .body_json(&$config.body)?
+                    .await?
+                    .body_json()
+                    .await?
+            }
             RequestType::Post => {
                 surf::post(&endpoint_url)
                     .body_json(&$config.body)?
                     .await?
                     .body_json()
+                    .await?
+            }
+            RequestType::Delete => {
+                surf::delete(&endpoint_url)
+                    .recv_json()
                     .await?
             }
         };
@@ -57,9 +70,42 @@ mod client;
 pub enum DatabaseType {
     EventLog,
     Feed,
-    DocStore,
+    DocStore { index_by: Option<String> },
     KeyValue,
     Counter,
+}
+#[derive(Debug, Serialize)]
+pub struct AccessController {
+    pub r#type: String,
+    pub write: Vec<String>,
+}
+#[derive(Debug, Serialize)]
+pub struct Query {
+    pub propname: Option<String>,
+    pub comp: Option<Comparison>,
+    pub values: Vec<i64>,
+}
+#[derive(Debug, ToString, Serialize)]
+#[strum(serialize_all = "lowercase")]
+pub enum Comparison {
+    /// ==
+    EQ,
+    /// !=
+    NE,
+    /// >
+    GT,
+    /// <
+    LT,
+    /// >=
+    GTE,
+    /// <=
+    LTE,
+    /// %
+    Mod,
+    /// Those between min and max
+    Range,
+    /// *
+    All,
 }
 
 /// Unit tests for the client methods
