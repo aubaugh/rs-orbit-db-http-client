@@ -17,44 +17,40 @@ pub enum RequestType {
 }
 
 /// Settings for an API request
-struct RequestConfig {
+struct RequestConfig<'a> {
     /// The type of request
     rtype: RequestType,
     /// The path to be concatenated to the client's base url
     path: String,
     /// The body json value
-    body: Value,
+    body: &'a Value,
 }
 
 /// Makes an arbitrary API request based on the provided `Client` and `RequestConfig`
 macro_rules! api_request {
     ($client:ident, $config:ident) => {{
-        let endpoint_url = $client.base_url.join(&$config.path)?;
+        let uri = $client.base_url.join(&$config.path)?;
 
         let response: Value = match $config.rtype {
             RequestType::Get => {
-                surf::get(&endpoint_url)
-                    .body_json(&$config.body)?
+                surf::get(&uri)
+                    .body_json($config.body)?
                     .await?
                     .body_json()
                     .await?
             }
             RequestType::Post => {
-                surf::post(&endpoint_url)
-                    .body_json(&$config.body)?
+                surf::post(&uri)
+                    .body_json($config.body)?
                     .await?
                     .body_json()
                     .await?
             }
-            RequestType::Delete => {
-                surf::delete(&endpoint_url)
-                    .recv_json()
-                    .await?
-            }
+            RequestType::Delete => surf::delete(&uri).recv_json().await?,
         };
 
-        if response["statusCode"] == 500 {
-            Err("Invalid API request arguments")?
+        if response.get("error").is_some() {
+            Err(response["message"].as_str().unwrap())?
         }
 
         let value = serde_json::from_value(response)?;

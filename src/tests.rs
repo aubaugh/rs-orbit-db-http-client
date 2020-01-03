@@ -1,18 +1,15 @@
 use super::*;
 use serde_json::json;
 use surf::Exception;
-use url::Url;
+
+fn client() -> Result<Client, url::ParseError> {
+    Ok(Client::new(url::Url::parse("https://localhost:3000")?))
+}
 
 /// Tests `client.get_dbs()`
 #[async_attributes::test]
 async fn get_dbs() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
-    let dbname = "feed";
-    let dbtype = DatabaseType::Feed;
-
-    client.create_db(dbname, dbtype, None, false).await?;
+    let client = client()?;
 
     client.get_dbs().await?;
     Ok(())
@@ -21,151 +18,142 @@ async fn get_dbs() -> Result<(), Exception> {
 /// Tests success of `client.get_db(:dbname)`
 #[async_attributes::test]
 async fn get_db_ok() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("feed");
-    let dbtype = DatabaseType::Feed;
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(&dbname, DatabaseType::Feed, None, false)
+        .await?;
 
+    // Tested function
     client.get_db(&dbname).await?;
+
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests failure of `client.get_db(:dbname)`
 #[async_attributes::test]
-#[should_panic(expected = "missing field `address`")]
+#[should_panic]
 async fn get_db_err() {
-    let url = Url::parse("https://localhost:3000").unwrap();
-    let client = Client::new(url);
+    let client = client().unwrap();
 
-    let dbname = "fake";
-
-    // This `.unwrap()` should panic at the expected error
-    client.get_db(dbname).await.unwrap();
+    client.get_db("fake").await.unwrap();
 }
 
 /// Tests success of `client.get_counter_value(:dbname)`
 #[async_attributes::test]
 async fn get_counter_value_ok() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
+    let client = client()?;
+    let dbname = String::from("counter2");
 
-    let dbname = String::from("counter");
-    let dbtype = DatabaseType::Counter;
-
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(&dbname, DatabaseType::Counter, None, false)
+        .await?;
 
     assert_eq!(client.get_counter_value(&dbname).await?, 0);
+
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests failure of `client.get_counter_value(:dbname)`
 #[async_attributes::test]
-#[should_panic(expected = "Invalid API request arguments")]
+#[should_panic]
 async fn get_counter_value_err() {
-    let url = Url::parse("https://localhost:3000").unwrap();
-    let client = Client::new(url);
+    let client = client().unwrap();
 
-    let dbname = String::from("feed");
-    let dbtype = DatabaseType::Feed;
-
-    client
-        .create_db(&dbname, dbtype, None, false)
-        .await
-        .unwrap();
-
-    // This `.unwrap()` should panic at the expected error
-    client.get_counter_value(&dbname).await.unwrap();
+    client.get_counter_value("fake").await.unwrap();
 }
 
 /// Tests success of `client.get_db_item(:dbname, :item)`
 #[async_attributes::test]
 async fn get_db_item_ok() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
     let record = json!({ "_id": 1, "value": "test" });
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
 
-    client.db_put(&dbname, record.clone()).await?;
+    client.db_put(&dbname, &record).await?;
 
     assert_eq!(client.get_db_item(&dbname, "1").await?, vec![record]);
+
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests failure of `client.get_db_item(:dbname, :item)`
 #[async_attributes::test]
-#[should_panic(expected = "Invalid API request arguments")]
+#[should_panic]
 async fn get_db_item_err() {
-    let url = Url::parse("https://localhost:3000").unwrap();
-    let client = Client::new(url);
+    let client = client().unwrap();
 
-    // This `.unwrap()` should panic at the expected error
     client.get_db_item("fake", "item").await.unwrap();
 }
 
 /// Tests success of `client.get_db_iterator(:dbname)`
 #[async_attributes::test]
 async fn get_db_iterator_ok() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("feed");
-    let dbtype = DatabaseType::Feed;
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(&dbname, DatabaseType::Feed, None, false)
+        .await?;
 
+    // Tested function
     client.get_db_iterator(&dbname, None).await?;
+
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests failure of `client.get_db_iterator(:dbname)`
 #[async_attributes::test]
-#[should_panic(expected = "Invalid API request arguments")]
+#[should_panic]
 async fn get_db_iterator_err() {
-    let url = Url::parse("https://localhost:3000").unwrap();
-    let client = Client::new(url);
+    let client = client().unwrap();
 
-    let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
-
-    client
-        .create_db(&dbname, dbtype, None, false)
-        .await
-        .unwrap();
-
-    // This `.unwrap()` should panic at the expected error
-    client.get_db_iterator(&dbname, None).await.unwrap();
+    client.get_db_iterator("fake", None).await.unwrap();
 }
 
 /// Tests `client.get_db_index(:dbname)`
+// TODO add failure scenario
 #[async_attributes::test]
 async fn get_db_index() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
     let record = json!({ "_id": 1, "value": "test" });
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
+    client.db_put(&dbname, &record).await?;
 
-    client.db_put(&dbname, record).await?;
-
+    // Tested function
     client.get_db_index(&dbname).await?;
+
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests `client.get_identity()`
 #[async_attributes::test]
 async fn get_identity() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
+    let client = client()?;
 
     client.get_identity().await?;
     Ok(())
@@ -179,72 +167,186 @@ async fn get_identity() -> Result<(), Exception> {
 ///        )`
 #[async_attributes::test]
 async fn create_db() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
+    let client = client()?;
+    let dbname = String::from("docstore");
 
-    let dbname = "docstore";
-    let dbtype = DatabaseType::DocStore { index_by: None };
+    // Tested function
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
 
-    client.create_db(dbname, dbtype, None, false).await?;
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
 /// Tests `client.db_query(:dbname, :query)`
+// TODO: add failure scenario
 #[async_attributes::test]
 async fn db_query() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
     let record = json!({ "_id": 1, "value": "test" });
     let query = Query {
         propname: None,
         comp: None,
-        values: vec![]
+        values: vec![],
     };
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
 
-    client.db_put(&dbname, record.clone()).await?;
+    client.db_put(&dbname, &record).await?;
 
-    assert_eq!(
-        client.db_query(&dbname, query).await?,
-        vec![record]
-    );
+    assert_eq!(client.db_query(&dbname, query).await?, vec![record]);
 
+    client.delete_db(&dbname).await?;
     Ok(())
 }
 
-/// Tests `client.db_put(:dbname, :record)`
+/// Tests success of `client.db_add(:dbname, :entry)`
 #[async_attributes::test]
-async fn db_put() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
+async fn db_add_ok() -> Result<(), Exception> {
+    let client = client()?;
+    let dbname = String::from("eventlog");
 
+    client
+        .create_db(&dbname, DatabaseType::EventLog, None, false)
+        .await?;
+
+    // Tested function
+    client.db_add(&dbname, "entry").await?;
+
+    client.delete_db(&dbname).await?;
+    Ok(())
+}
+
+/// Tests failure of `client.db_add(:dbname, :entry)`
+#[async_attributes::test]
+#[should_panic]
+async fn db_add_err() {
+    let client = client().unwrap();
+
+    client.db_add("fake", "entry").await.unwrap();
+}
+
+/// Tests success of `client.inc_counter_value(:dbname, :value)`
+#[async_attributes::test]
+async fn inc_counter_value_ok() -> Result<(), Exception> {
+    let client = client()?;
+    let dbname = String::from("counter");
+
+    client
+        .create_db(&dbname, DatabaseType::Counter, None, false)
+        .await?;
+
+    // Tested function
+    client.inc_counter_value(&dbname, None).await?;
+
+    client.delete_db(&dbname).await?;
+    Ok(())
+}
+
+/// Tests failure of `client.inc_counter_value(:dbname, :value)`
+#[async_attributes::test]
+#[should_panic]
+async fn inc_counter_value_err() {
+    let client = client().unwrap();
+
+    client.inc_counter_value("fake", None).await.unwrap();
+}
+
+/// Tests success of `client.db_put(:dbname, :record)`
+#[async_attributes::test]
+async fn db_put_ok() -> Result<(), Exception> {
+    let client = client()?;
     let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
     let record = json!({ "_id": 1, "value": "test" });
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
 
-    client.db_put(&dbname, record).await?;
+    // Tested function
+    client.db_put(&dbname, &record).await?;
 
+    client.delete_db(&dbname).await?;
     Ok(())
+}
+
+/// Tests failure of `client.db_put(:dbname, :record)`
+#[async_attributes::test]
+#[should_panic]
+async fn db_put_err() {
+    let client = client().unwrap();
+    let record = json!({ "_id": 1, "value": "test" });
+
+    client.db_put("fake", &record).await.unwrap();
 }
 
 /// Tests `client.delete_db(:dbname)`
 #[async_attributes::test]
 async fn delete_db() -> Result<(), Exception> {
-    let url = Url::parse("https://localhost:3000")?;
-    let client = Client::new(url);
-
+    let client = client()?;
     let dbname = String::from("docstore");
-    let dbtype = DatabaseType::DocStore { index_by: None };
 
-    client.create_db(&dbname, dbtype, None, false).await?;
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
 
     client.delete_db(&dbname).await?;
-
     Ok(())
+}
+
+/// Tests success of `client.delete_db_item(:dbname, :item)`
+#[async_attributes::test]
+async fn delete_db_item_ok() -> Result<(), Exception> {
+    let client = client()?;
+    let dbname = String::from("docstore");
+    let record = json!({ "_id": 1, "value": "test" });
+
+    client
+        .create_db(
+            &dbname,
+            DatabaseType::DocStore { index_by: None },
+            None,
+            false,
+        )
+        .await?;
+    client.db_put(&dbname, &record).await?;
+
+    // Tested function
+    client.delete_db_item(&dbname, "1").await?;
+
+    client.delete_db(&dbname).await?;
+    Ok(())
+}
+
+/// Tests failure of `client.delete_db_item(:dbname, :item)`
+#[async_attributes::test]
+#[should_panic]
+async fn delete_db_item_err() {
+    let client = client().unwrap();
+
+    client.delete_db_item("fake", "item").await.unwrap();
 }

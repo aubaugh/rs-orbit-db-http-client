@@ -51,8 +51,6 @@ pub struct Hash {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Options {
-    // This field could be a string if the db was created with
-    // `curl -X POST :base_url/db/:dbname -d "create=true" -d "type=:dbtype"`
     create: bool,
     index_by: Option<String>,
     local_only: bool,
@@ -73,7 +71,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: "dbs".into(),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -85,7 +83,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}", &dbname),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -97,7 +95,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/value", &dbname),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -110,7 +108,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/{}", &dbname, &item),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -127,7 +125,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/iterator", &dbname),
-            body: json!({ "limit": limit.unwrap_or(-1) }),
+            body: &json!({ "limit": limit.unwrap_or(-1) }),
         };
 
         api_request!(self, config)
@@ -139,7 +137,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/index", &dbname),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -151,7 +149,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: "identity".into(),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -173,7 +171,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}", dbname),
-            body: json!({
+            body: &json!({
                 "create": true,
                 "type": dbtype.to_string(),
                 "indexBy": to_value(match dbtype {
@@ -195,7 +193,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/query", dbname),
-            body: to_value(query)?,
+            body: &to_value(query)?,
         };
 
         api_request!(self, config)
@@ -204,11 +202,11 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/add`,
     /// sending the entry to be added to the EventLog or Feed and returning
     /// the hash on success
-    pub async fn db_add(&self, dbname: &str, entry: String) -> Result<Hash, Exception> {
+    pub async fn db_add(&self, dbname: &str, entry: &str) -> Result<Hash, Exception> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/add", dbname),
-            body: to_value(entry)?,
+            body: &to_value(entry)?,
         };
 
         api_request!(self, config)
@@ -217,7 +215,7 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/put`,
     /// sending the record to be added to the database and returning
     /// the hash on success
-    pub async fn db_put(&self, dbname: &str, record: Value) -> Result<Hash, Exception> {
+    pub async fn db_put(&self, dbname: &str, record: &Value) -> Result<Hash, Exception> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/put", dbname),
@@ -230,37 +228,31 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/inc`,
     /// to increment the counter database by 1 and returning
     /// the hash on success
-    pub async fn db_inc(&self, dbname: &str) -> Result<Hash, Exception> {
+    pub async fn inc_counter_value(
+        &self,
+        dbname: &str,
+        amount: Option<u64>,
+    ) -> Result<Hash, Exception> {
         let config = RequestConfig {
             rtype: RequestType::Post,
-            path: format!("db/{}/inc", dbname),
-            body: Value::Null,
+            path: match amount {
+                Some(amount) => format!("db/{}/inc/{}", dbname, amount),
+                None => format!("db/{}/inc", dbname),
+            },
+            body: &Value::Null,
         };
 
         api_request!(self, config)
     }
 
-    /// Makes a POST request to `self.base_url/db/:dbname/inc/:value`,
-    /// to increment the counter database by `:value` and returning
-    /// the hash on success
-    pub async fn db_inc_val(&self, dbname: &str, value: u64) -> Result<Hash, Exception> {
-        let config = RequestConfig {
-            rtype: RequestType::Post,
-            path: format!("db/{}/inc/{}", dbname, value),
-            body: Value::Null,
-        };
-
-        api_request!(self, config)
-    }
-
-    /// Makes a POST request to `self.base_url/db/:dbname/inc/:value`,
-    /// to increment the counter database by `:value` and returning
-    /// the hash on success
-    pub async fn db_write_access(&self, dbname: &str, id: String) -> Result<Hash, Exception> {
+    /// Makes a POST request to `self.base_url/db/:dbname/access/write`,
+    /// to add the id to the list of peers who have writing access
+    /// for that database, returning the hash on success
+    pub async fn grant_write_access(&self, dbname: &str, id: String) -> Result<Hash, Exception> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/access/write", dbname),
-            body: json!({ "id": id }),
+            body: &json!({ "id": id }),
         };
 
         api_request!(self, config)
@@ -268,12 +260,12 @@ impl Client {
 
     /// Makes a DELETE request to `self.base_url/db/:dbname`,
     /// to delete the specified database and returning
-    /// the hash on success
+    /// an empty hashmap on success
     pub async fn delete_db(&self, dbname: &str) -> Result<HashMap<(), ()>, Exception> {
         let config = RequestConfig {
             rtype: RequestType::Delete,
             path: format!("db/{}", dbname),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
@@ -286,7 +278,7 @@ impl Client {
         let config = RequestConfig {
             rtype: RequestType::Delete,
             path: format!("db/{}/{}", dbname, item),
-            body: Value::Null,
+            body: &Value::Null,
         };
 
         api_request!(self, config)
