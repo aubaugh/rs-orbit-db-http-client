@@ -14,5 +14,9 @@ or install and use [just](https://github.com/casey/just).
 
 ## To test the client library
 ```
-cargo test --lib
+RUST_TEST_THREADS=1 cargo test --lib
+```
+or
+```
+just test
 ```
