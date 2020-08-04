@@ -49,10 +49,6 @@ macro_rules! api_request {
             RequestType::Delete => surf::delete(&uri).recv_json().await?,
         };
 
-        if response.get("error").is_some() {
-            Err(response["message"].as_str().unwrap())?
-        }
-
         let value = serde_json::from_value(response)?;
         Ok(value)
     }};
@@ -103,10 +99,3 @@ pub enum Comparison {
     /// *
     All,
 }
-
-/// Unit tests for the client methods
-///
-/// These tests currently expect the REST api server
-/// to be running on `https://localhost:3000`
-#[cfg(test)]
-mod tests;

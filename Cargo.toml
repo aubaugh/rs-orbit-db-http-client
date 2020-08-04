@@ -17,5 +17,6 @@ strum = "0.17.1"
 strum_macros = "0.17.1"
 
 [dev-dependencies]
+demonstrate = "0.4.0"
 femme = "1.1.0"
 log = "0.4.7"

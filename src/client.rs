@@ -2,8 +2,9 @@ use super::*;
 use serde::Deserialize;
 use serde_json::{json, to_value, Value};
 use std::collections::HashMap;
-use surf::Exception;
 use url::Url;
+
+type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 /// The structure used for making requests to an OrbitDB REST API
 pub struct Client {
@@ -67,7 +68,7 @@ impl Client {
 
     /// Makes a GET request to `self.base_url/dbs`,
     /// returning a hashmap of databases
-    pub async fn get_dbs(&self) -> Result<HashMap<String, Database>, Exception> {
+    pub async fn get_dbs(&self) -> Result<HashMap<String, Database>, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: "dbs".into(),
@@ -79,7 +80,7 @@ impl Client {
 
     /// Makes a GET request to `self.base_url/db/:dbname`,
     /// returning the database structure on success
-    pub async fn get_db(&self, dbname: &str) -> Result<Database, Exception> {
+    pub async fn get_db(&self, dbname: &str) -> Result<Database, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}", &dbname),
@@ -91,7 +92,7 @@ impl Client {
 
     /// Makes a GET request to `self.base_url/db/:dbname/value`,
     /// returning the counter's value on success
-    pub async fn get_counter_value(&self, dbname: &str) -> Result<u64, Exception> {
+    pub async fn get_counter_value(&self, dbname: &str) -> Result<u64, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/value", &dbname),
@@ -104,7 +105,7 @@ impl Client {
     /// Makes a GET request to `self.base_url/db/:dbname/:item`,
     /// returning the database's record identified by `:item` on
     /// success
-    pub async fn get_db_item(&self, dbname: &str, item: &str) -> Result<Vec<Value>, Exception> {
+    pub async fn get_db_item(&self, dbname: &str, item: &str) -> Result<Vec<Value>, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/{}", &dbname, &item),
@@ -121,7 +122,7 @@ impl Client {
         &self,
         dbname: &str,
         limit: Option<i64>,
-    ) -> Result<Vec<Value>, Exception> {
+    ) -> Result<Vec<Value>, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/iterator", &dbname),
@@ -133,7 +134,7 @@ impl Client {
 
     /// Makes a GET request to `self.base_url/db/:dbname/value`,
     /// returning the database information on success
-    pub async fn get_db_index(&self, dbname: &str) -> Result<Value, Exception> {
+    pub async fn get_db_index(&self, dbname: &str) -> Result<Value, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: format!("db/{}/index", &dbname),
@@ -145,7 +146,7 @@ impl Client {
 
     /// Makes a GET request to `self.base_url/identity`,
     /// returning the identity structure on success
-    pub async fn get_identity(&self) -> Result<Identity, Exception> {
+    pub async fn get_identity(&self) -> Result<Identity, Error> {
         let config = RequestConfig {
             rtype: RequestType::Get,
             path: "identity".into(),
@@ -167,7 +168,7 @@ impl Client {
         dbtype: DatabaseType,
         ac: Option<AccessController>,
         overwrite: bool,
-    ) -> Result<Database, Exception> {
+    ) -> Result<Database, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}", dbname),
@@ -189,7 +190,7 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/query`,
     /// sending the query to be interpretted and processed returning
     /// the items on success
-    pub async fn db_query(&self, dbname: &str, query: Query) -> Result<Vec<Value>, Exception> {
+    pub async fn db_query(&self, dbname: &str, query: Query) -> Result<Vec<Value>, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/query", dbname),
@@ -202,7 +203,7 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/add`,
     /// sending the entry to be added to the EventLog or Feed and returning
     /// the hash on success
-    pub async fn db_add(&self, dbname: &str, entry: &str) -> Result<Hash, Exception> {
+    pub async fn db_add(&self, dbname: &str, entry: &str) -> Result<Hash, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/add", dbname),
@@ -215,7 +216,7 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/put`,
     /// sending the record to be added to the database and returning
     /// the hash on success
-    pub async fn db_put(&self, dbname: &str, record: &Value) -> Result<Hash, Exception> {
+    pub async fn db_put(&self, dbname: &str, record: &Value) -> Result<Hash, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/put", dbname),
@@ -232,7 +233,7 @@ impl Client {
         &self,
         dbname: &str,
         amount: Option<u64>,
-    ) -> Result<Hash, Exception> {
+    ) -> Result<Hash, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: match amount {
@@ -248,7 +249,7 @@ impl Client {
     /// Makes a POST request to `self.base_url/db/:dbname/access/write`,
     /// to add the id to the list of peers who have writing access
     /// for that database, returning the hash on success
-    pub async fn grant_write_access(&self, dbname: &str, id: String) -> Result<Hash, Exception> {
+    pub async fn grant_write_access(&self, dbname: &str, id: String) -> Result<Hash, Error> {
         let config = RequestConfig {
             rtype: RequestType::Post,
             path: format!("db/{}/access/write", dbname),
@@ -261,7 +262,7 @@ impl Client {
     /// Makes a DELETE request to `self.base_url/db/:dbname`,
     /// to delete the specified database and returning
     /// an empty hashmap on success
-    pub async fn delete_db(&self, dbname: &str) -> Result<HashMap<(), ()>, Exception> {
+    pub async fn delete_db(&self, dbname: &str) -> Result<HashMap<(), ()>, Error> {
         let config = RequestConfig {
             rtype: RequestType::Delete,
             path: format!("db/{}", dbname),
@@ -274,7 +275,7 @@ impl Client {
     /// Makes a DELETE request to `self.base_url/db/:dbname/:item`,
     /// to delete the specified item from the database and returning
     /// the hash on success
-    pub async fn delete_db_item(&self, dbname: &str, item: &str) -> Result<Hash, Exception> {
+    pub async fn delete_db_item(&self, dbname: &str, item: &str) -> Result<Hash, Error> {
         let config = RequestConfig {
             rtype: RequestType::Delete,
             path: format!("db/{}/{}", dbname, item),
