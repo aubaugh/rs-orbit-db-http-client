@@ -18,4 +18,4 @@ strum_macros = "0.17.1"
 
 [dev-dependencies]
 femme = "1.1.0"
-log = "0.4.7"
+log = "0.4.14"
